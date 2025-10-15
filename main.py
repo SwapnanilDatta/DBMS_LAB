@@ -17,28 +17,23 @@ st.set_page_config(
 )
 
 # Check if running in Streamlit Cloud
-if hasattr(st, 'secrets') and 'host' in st.secrets:
-    # Use Streamlit secrets for database connection
+# --- Database Connection ---
+# Database configuration using Streamlit secrets
+try:
     db_config = {
-        "host": st.secrets["host"],
-        "port": st.secrets["port"],
-        "user": st.secrets["user"],
-        "password": st.secrets["password"],
-        "database": st.secrets["database"],
-        "ssl_ca": "ca.pem",
-        "ssl_verify_cert": True
+        "host": st.secrets["database"]["host"],
+        "port": st.secrets["database"]["port"],
+        "user": st.secrets["database"]["user"],
+        "password": st.secrets["database"]["password"],
+        "database": st.secrets["database"]["database"],
+        "ssl_ca": st.secrets["database"]["ssl_ca"],
+        "ssl_verify_cert": st.secrets["database"].get("ssl_verify_cert", True)
     }
-else:
-    # Use environment variables from .env file for local development
-    db_config = {
-        "host": os.getenv("DB_HOST"),
-        "port": int(os.getenv("DB_PORT", 23713)), # Default port if not set
-        "user": os.getenv("DB_USER"),
-        "password": os.getenv("DB_PASSWORD"),
-        "database": os.getenv("DB_NAME"),
-        "ssl_ca": "ca.pem",
-        "ssl_verify_cert": True
-    }
+except KeyError as e:
+    st.error(f"Missing secret configuration: {e}")
+    st.info("Please configure your secrets in Streamlit Cloud or create a .streamlit/secrets.toml file locally.")
+    st.stop()
+
 @st.cache_resource
 def init_connection():
     """Initializes a connection to the MySQL database."""
@@ -49,8 +44,6 @@ def init_connection():
     except Error as e:
         st.error(f"Error connecting to MySQL database: {e}", icon="🔥")
         return None
-
-# Get the database connection
 conn = init_connection()
 
 @st.cache_data(ttl=600) # Cache data for 10 minutes
